@@ -1,8 +1,4 @@
 from io import BytesIO
-from phpserialize import unserialize
-
-from .constants import *
-from .types import Phar
 
 
 def _readuntil(stream: BytesIO, pattern: bytes):

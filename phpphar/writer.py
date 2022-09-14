@@ -1,11 +1,11 @@
 from io import BytesIO
 import warnings
 
-from .constants import _HALT, _STUB_SFX
-from .types import Phar
+import phpphar.types as types
+from phpphar.constants import _HALT, _STUB_SFX
 
 
-def write_phar(stream: BytesIO, obj: Phar):
+def write_phar(stream: BytesIO, obj: 'types.Phar'):
     for s in _STUB_SFX + ['']:
         if obj.stub.endswith(_HALT + s):
             break

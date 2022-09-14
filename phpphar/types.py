@@ -2,6 +2,7 @@ import enum
 from io import BytesIO
 
 from .constants import _HALT
+from .reader import read_manifest
 from .writer import write_phar
 
 
@@ -26,3 +27,10 @@ class Phar:
         stream = BytesIO()
         write_phar(stream, self)
         stream.getbuffer().tobytes()
+
+    @staticmethod
+    def from_bytes(data: bytes) -> 'Phar':
+        obj = Phar()
+        stream = BytesIO(data)
+        read_manifest(stream, obj)
+        return obj

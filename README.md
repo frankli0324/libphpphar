@@ -14,14 +14,16 @@ A port of PHP's Phar class, in pure python
 ## Example
 
 ```python
-from phpphar import PharBuilder
+from phpphar import Phar, PharBuilder
 
 class VulnerableObject:
     pass
 
 with open("app.phar", "rb") as f:
-    builder = PharBuilder.load(f.read())
+    archive = Phar.from_bytes(f.read())
+# or simply `archive = Phar()` if you want to start from scratch
 
+builder = PharBuilder(archive)
 builder.add_entry('index.php', '<?php system("whoami");')
 builder.set_metadata(VulnerableObject())
 # or do it manually
