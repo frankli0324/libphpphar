@@ -83,7 +83,7 @@ class PharEntry:
 
 
 class PharBase:
-    stub: str = f'<?php {_HALT} ?>\r\n'
+    stub: bytes = b'<?php {} ?>\r\n'.replace(b'{}', _HALT)
     flags: PharGlobalFlag = PharGlobalFlag.SIGNED  # sha-1 hash
     metadata: object = None
     alias: str = ''
