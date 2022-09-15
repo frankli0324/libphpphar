@@ -1,6 +1,8 @@
 __pycache__/
 venv/
 .vscode/
+dist/
+*.egg-info/
 
 # for debugging & testing
 main.py
