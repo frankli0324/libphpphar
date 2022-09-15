@@ -9,7 +9,21 @@ from phpphar.utils import _readuntil
 
 
 def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
-    pass
+    entry = types.PharEntry()
+    name_len = int.from_bytes(stream.read(4), 'little')
+    entry.name = stream.read(name_len)
+    entry.size = int.from_bytes(stream.read(4), 'little')
+    entry.timestamp = int.from_bytes(stream.read(4), 'little')
+    entry.compressed_size = int.from_bytes(stream.read(4), 'little')
+    entry.crc32 = stream.read(4)
+    flags = int.from_bytes(stream.read(4), 'little')
+    entry.permissions = types.PharEntryPermission(flags & 0x1ff)
+    entry.flags = types.PharEntryFlag(flags & 0xfffffe00)
+    metadata_len = int.from_bytes(stream.read(4), 'little')
+    if metadata_len != 0:
+        metadata_raw = stream.read(metadata_len)
+        entry.metadata = unserialize(metadata_raw)
+    obj.entries.append(entry)
 
 
 def read_manifest(stream: BytesIO, obj: 'types.Phar'):
@@ -29,9 +43,12 @@ def read_manifest(stream: BytesIO, obj: 'types.Phar'):
     alias_len = int.from_bytes(stream.read(4), 'little')
     obj.alias = stream.read(alias_len)
     metadata_len = int.from_bytes(stream.read(4), 'little')
-    metadata_raw = stream.read(metadata_len)
-    obj.metadata = unserialize(metadata_raw)
+    if metadata_len != 0:
+        metadata_raw = stream.read(metadata_len)
+        obj.metadata = unserialize(metadata_raw)
     manifest_len -= (4 + 4 + 2 + 4 + 4 + alias_len + 4 + metadata_len)
+    for _ in range(entry_cnt):
+        read_entry_manifest(stream, obj)
 
 
 def write_phar(stream: BytesIO, obj: 'types.Phar'):
