@@ -4,8 +4,8 @@ import warnings
 from phpserialize import unserialize
 
 import phpphar.types as types
-from phpphar.constants import _HALT, _STUB_SFX
-from phpphar.utils import _readuntil
+from phpphar.constants import _STUB_SFX
+from phpphar.utils import BZip2Reader, ZlibReader, _readuntil
 
 
 def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
@@ -37,6 +37,7 @@ def read_manifest(stream: BytesIO, obj: 'types.Phar'):
             break
     stream.seek(cursor)
     manifest_len = int.from_bytes(stream.read(4), 'little')
+    manifest_end = cursor + manifest_len + 4
     entry_cnt = int.from_bytes(stream.read(4), 'little')
     assert stream.read(2) == b'\x11\x00'
     obj.flags = types.PharGlobalFlag(int.from_bytes(stream.read(4), 'little'))
@@ -46,16 +47,24 @@ def read_manifest(stream: BytesIO, obj: 'types.Phar'):
     if metadata_len != 0:
         metadata_raw = stream.read(metadata_len)
         obj.metadata = unserialize(metadata_raw)
-    manifest_len -= (4 + 4 + 2 + 4 + 4 + alias_len + 4 + metadata_len)
     for _ in range(entry_cnt):
         read_entry_manifest(stream, obj)
+    if manifest_end != stream.tell():
+        warnings.warn(
+            'manifest length mismatch. '
+            'possibly reading a broken phar'
+        )
 
 
-def write_phar(stream: BytesIO, obj: 'types.Phar'):
-    for s in _STUB_SFX + ['']:
-        if obj.stub.endswith(_HALT + s):
-            break
-    else:
-        url = 'https://www.php.net/manual/en/phar.fileformat.stub.php'
-        warnings.warn(f'stub not ended properly. see note in {url}')
-    stream.write(obj.stub)
+def read_contents(stream: BytesIO, obj: 'types.Phar'):
+    for entry in obj.entries:
+        # TODO: handle size mismatch
+        # invalidate zip bombs
+        if entry.flags == types.PharEntryFlag.IS_BZIP2:
+            s = BytesIO(stream.read(entry.compressed_size))
+            entry.content = BZip2Reader(s).read(entry.size)
+        elif entry.flags == types.PharEntryFlag.IS_DEFLATE:
+            s = BytesIO(stream.read(entry.compressed_size))
+            entry.content = ZlibReader(s).read(entry.size)
+        else:
+            entry.content = stream.read(entry.size)

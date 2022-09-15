@@ -2,7 +2,7 @@ from enum import Flag
 from io import BytesIO
 
 from .constants import _HALT
-from .reader import read_manifest
+from .reader import read_manifest, read_contents
 from .writer import write_phar
 
 
@@ -36,6 +36,7 @@ class PharEntry:
     permissions: PharEntryPermission  # 9-bit
     flags: PharEntryFlag
     metadata: object = None
+    content = None
 
 
 class Phar:
@@ -55,4 +56,5 @@ class Phar:
         obj = Phar()
         stream = BytesIO(data)
         read_manifest(stream, obj)
+        read_contents(stream, obj)
         return obj
