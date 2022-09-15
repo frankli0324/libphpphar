@@ -1,6 +1,7 @@
 import hashlib
 from io import BytesIO
 import warnings
+import zlib
 
 from phpserialize import unserialize
 
@@ -16,7 +17,7 @@ def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
     entry.size = int.from_bytes(stream.read(4), 'little')
     entry.timestamp = int.from_bytes(stream.read(4), 'little')
     entry.compressed_size = int.from_bytes(stream.read(4), 'little')
-    entry.crc32 = stream.read(4)
+    entry.crc32 = int.from_bytes(stream.read(4), 'little')
     flags = int.from_bytes(stream.read(4), 'little')
     entry.permissions = types.PharEntryPermission(flags & 0x1ff)
     entry.flags = types.PharEntryFlag(flags & 0xfffffe00)
@@ -70,6 +71,8 @@ def read_contents(stream: BytesIO, obj: 'types.Phar'):
         else:
             # TODO: handle multiple compression flags are set
             entry.content = stream.read(entry.size)
+        if zlib.crc32(entry.content) != entry.crc32:
+            warnings.warn(f'{entry.name} crc32 mismatch')
 
 
 def verify_signature(stream: BytesIO, obj: 'types.Phar'):

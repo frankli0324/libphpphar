@@ -40,7 +40,7 @@ class PharEntry:
     timestamp: int
     size: int
     compressed_size: int
-    crc32: bytes
+    crc32: int
     permissions: PharEntryPermission  # 9-bit
     flags: PharEntryFlag
     metadata: object = None

@@ -1,4 +1,4 @@
-from .types import Phar
+from .types import Phar, PharEntry
 from .builder import PharBuilder
 
-__all__ = ['Phar', 'PharBuilder']
+__all__ = ['Phar', 'PharEntry', 'PharBuilder']
