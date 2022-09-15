@@ -14,24 +14,25 @@ A port of PHP's Phar class, in pure python
 ## Example
 
 ```python
-from phpphar import Phar, PharBuilder
+from datetime import datetime
+from io import BytesIO
+from phpphar import Phar, PharIOPhar
+from phpserialize import PHP_Class
 
-class VulnerableObject:
+# for (un)serializing the metadatas
+class VulnerableObject(PHP_Class):
     pass
 
 with open("app.phar", "rb") as f:
-    archive = Phar.from_bytes(f.read())
-# or simply `archive = Phar()` if you want to start from scratch
+    original = f.read()
 
-builder = PharBuilder(archive)
-builder.add_entry('index.php', '<?php system("whoami");')
-builder.set_metadata(VulnerableObject())
-# or do it manually
-builder.archive.metadata = VulnerableObject()
-print(builder.archive.entries)
-
-with open("output.phar", "wb") as f:
-    f.write(bytes(builder))
+archive: Phar = Phar.from_bytes(original)
+# simply `archive = Phar()` if you want to start from scratch
+print(archive.metadata)
+for entry in archive.entries:
+    print(f'{entry.permissions}\t{entry.size}\t{datetime.fromtimestamp(entry.timestamp)}\t{entry.name}')
+output = bytes(archive)
+assert original == output
 ```
 
 ## Important

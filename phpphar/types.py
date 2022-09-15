@@ -1,12 +1,10 @@
 from datetime import datetime
 from enum import Flag
-from io import BytesIO, FileIO
+from io import FileIO
 from typing import Literal
 from zlib import crc32
 
 from .constants import _HALT
-from .reader import read_phar
-from .writer import write_phar
 
 
 class PharGlobalFlag(Flag):
@@ -84,21 +82,9 @@ class PharEntry:
         return entry
 
 
-class Phar:
+class PharBase:
     stub: str = f'<?php {_HALT} ?>\r\n'
     flags: PharGlobalFlag = PharGlobalFlag.SIGNED  # sha-1 hash
     metadata: object = None
     alias: str = ''
     entries: list[PharEntry] = []
-
-    def __bytes__(self):
-        stream = BytesIO()
-        write_phar(stream, self)
-        return stream.getbuffer().tobytes()
-
-    @staticmethod
-    def from_bytes(data: bytes) -> 'Phar':
-        obj = Phar()
-        stream = BytesIO(data)
-        read_phar(stream, obj)
-        return obj
