@@ -2,7 +2,7 @@ from enum import Flag
 from io import BytesIO
 
 from .constants import _HALT
-from .reader import read_manifest, read_contents
+from .reader import read_manifest, read_contents, verify_signature
 from .writer import write_phar
 
 
@@ -16,6 +16,14 @@ class PharEntryFlag(Flag):
     # file permissions are calculated independently
     IS_DEFLATE = 0x00001000
     IS_BZIP2 = 0x00002000
+
+
+class PharSignFlag(Flag):
+    MD5 = 0x0001
+    SHA1 = 0x0002
+    SHA256 = 0x0003
+    SHA512 = 0x0004
+    OPENSSL = 0x0010
 
 
 class PharEntryPermission(int):
@@ -57,4 +65,5 @@ class Phar:
         stream = BytesIO(data)
         read_manifest(stream, obj)
         read_contents(stream, obj)
+        verify_signature(stream, obj)
         return obj

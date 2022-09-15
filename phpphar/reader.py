@@ -1,3 +1,4 @@
+import hashlib
 from io import BytesIO
 import warnings
 
@@ -67,4 +68,32 @@ def read_contents(stream: BytesIO, obj: 'types.Phar'):
             s = BytesIO(stream.read(entry.compressed_size))
             entry.content = ZlibReader(s).read(entry.size)
         else:
+            # TODO: handle multiple compression flags are set
             entry.content = stream.read(entry.size)
+
+
+def verify_signature(stream: BytesIO, obj: 'types.Phar'):
+    if types.PharGlobalFlag.SIGNED not in obj.flags:
+        return
+    content = stream.getbuffer()[:stream.tell()]
+    signature = stream.read()
+    if len(signature) <= 8 or not signature.endswith(b'GBMB'):
+        warnings.warn('broken signature')
+        return
+    sign_flag = types.PharSignFlag(
+        int.from_bytes(signature[-8:-4], 'little')
+    )
+    signature = signature[:-8]
+    if types.PharSignFlag.MD5 in sign_flag:
+        result = hashlib.md5(content).digest()
+    elif types.PharSignFlag.SHA1 in sign_flag:
+        result = hashlib.sha1(content).digest()
+    elif types.PharSignFlag.SHA256 in sign_flag:
+        result = hashlib.sha256(content).digest()
+    elif types.PharSignFlag.OPENSSL in sign_flag:
+        warnings.warn('TODO: implement openssl signature')
+    else:
+        warnings.warn('invalid signature type')
+        return
+    if result != signature:
+        warnings.warn('signature mismatch')
