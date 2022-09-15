@@ -1,5 +1,8 @@
+from datetime import datetime
 from enum import Flag
-from io import BytesIO
+from io import BytesIO, FileIO
+from typing import Literal
+from zlib import crc32
 
 from .constants import _HALT
 from .reader import read_manifest, read_contents, verify_signature
@@ -34,17 +37,51 @@ class PharEntryPermission(int):
                 perms[8 - i] = '-'
         return ''.join(perms)
 
+    @staticmethod
+    def from_str(s: str):
+        if len(s) != 9:
+            raise ValueError()
+        ret = PharEntryPermission()
+        for i in range(len(s)):
+            if s[i] != '-':
+                ret |= (1 << (8 - i))
+
 
 class PharEntry:
     name: str
     timestamp: int
     size: int
-    compressed_size: int
+    compressed_size: int  # calculated on write
     crc32: int
     permissions: PharEntryPermission  # 9-bit
     flags: PharEntryFlag
     metadata: object = None
     content = None
+
+    @staticmethod
+    def from_file(
+        name: str, file: FileIO, permissions='rw-r--r--', time: datetime = None,
+        compression: Literal['bzip2', 'deflate', 'none'] = 'none',
+    ) -> 'PharEntry':
+        entry = PharEntry()
+        entry.name = name
+        with file as f:
+            entry.content = f.read()
+            if isinstance(entry.content, str):
+                entry.content = entry.content.encode('utf-8')
+            entry.size = len(entry.content)
+        entry.crc32 = crc32(entry.content)
+        entry.permissions = PharEntryPermission.from_str(permissions)
+        if time == None:
+            time = datetime.now()
+        entry.timestamp = int(time.timestamp())
+        if compression == 'bzip2':
+            entry.flags = PharEntryFlag.IS_BZIP2
+        elif compression == 'deflate':
+            entry.flags = PharEntryFlag.IS_DEFLATE
+        elif compression == 'none':
+            entry.flags = PharEntryFlag(0)
+        return entry
 
 
 class Phar:
