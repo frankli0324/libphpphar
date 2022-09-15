@@ -12,6 +12,7 @@ from phpphar.utils import BZip2Reader, ZlibReader, _readuntil
 
 
 def read(stream: BytesIO, obj: 'types.PharBase'):
+    assert stream.tell() == 0
     obj.stub = _readuntil(stream, _HALT)
     cursor = stream.tell()
     lookahead = stream.read(5)
@@ -28,6 +29,7 @@ def read(stream: BytesIO, obj: 'types.PharBase'):
 
 
 def write(stream: BytesIO, obj: 'types.PharBase'):
+    assert stream.tell() == 0
     for s in _STUB_SFX + [b'']:
         if obj.stub.endswith(_HALT + s):
             break
@@ -36,6 +38,12 @@ def write(stream: BytesIO, obj: 'types.PharBase'):
         warnings.warn(f'stub not ended properly. see note in {url}')
     stream.write(obj.stub)
     write_manifest(stream, obj)
+    for entry in obj.entries:
+        stream.write(entry.__r_content)
+        delattr(entry, '__r_content')
+    stream.write(hashlib.sha1(stream.getvalue()).digest())
+    stream.write(types.PharSignFlag.SHA1.value.to_bytes(4, 'little'))
+    stream.write(b'GBMB')
 
 
 def read_manifest(stream: BytesIO, obj: 'types.PharBase'):
@@ -152,9 +160,11 @@ def write_entry_manifest(stream, entry):
     stream.write(entry.timestamp.to_bytes(4, 'little'))
     r_content = entry.content
     if types.PharEntryFlag.IS_BZIP2 in entry.flags:
-        r_content = bz2.compress(entry.content)
+        # php does level 4 compression, PHP_BZ2_FILTER_DEFAULT_BLOCKSIZE
+        r_content = bz2.compress(entry.content, 4)
     elif types.PharEntryFlag.IS_DEFLATE in entry.flags:
         r_content = zlib.compress(entry.content)
+    entry.__r_content = r_content
     stream.write(len(r_content).to_bytes(4, 'little'))
     stream.write(zlib.crc32(entry.content).to_bytes(4, 'little'))
     flags = entry.permissions | entry.flags.value
