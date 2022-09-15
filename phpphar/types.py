@@ -43,6 +43,7 @@ class PharEntryPermission(int):
         for i in range(len(s)):
             if s[i] != '-':
                 ret |= (1 << (8 - i))
+        return ret
 
 
 class PharEntry:
