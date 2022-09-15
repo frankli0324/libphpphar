@@ -5,7 +5,7 @@ import warnings
 from phpserialize import unserialize
 
 import phpphar.types as types
-from phpphar.constants import _STUB_SFX
+from phpphar.constants import _HALT, _STUB_SFX
 from phpphar.utils import BZip2Reader, ZlibReader, _readuntil
 
 
@@ -28,7 +28,7 @@ def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
 
 
 def read_manifest(stream: BytesIO, obj: 'types.Phar'):
-    obj.stub = _readuntil(stream, b'__HALT_COMPILER();')
+    obj.stub = _readuntil(stream, _HALT)
     cursor = stream.tell()
     lookahead = stream.read(5)
     for s in _STUB_SFX:
