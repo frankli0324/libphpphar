@@ -5,7 +5,7 @@ from typing import Literal
 from zlib import crc32
 
 from .constants import _HALT
-from .reader import read_manifest, read_contents, verify_signature
+from .reader import read_phar
 from .writer import write_phar
 
 
@@ -56,7 +56,7 @@ class PharEntry:
     permissions: PharEntryPermission  # 9-bit
     flags: PharEntryFlag
     metadata: object = None
-    content = None
+    content: bytes = None
 
     @staticmethod
     def from_file(
@@ -85,7 +85,7 @@ class PharEntry:
 
 
 class Phar:
-    stub: str = f'<?php {_HALT}'
+    stub: str = f'<?php {_HALT} ?>\r\n'
     flags: PharGlobalFlag = PharGlobalFlag.SIGNED  # sha-1 hash
     metadata: object = None
     alias: str = ''
@@ -94,13 +94,11 @@ class Phar:
     def __bytes__(self):
         stream = BytesIO()
         write_phar(stream, self)
-        stream.getbuffer().tobytes()
+        return stream.getbuffer().tobytes()
 
     @staticmethod
     def from_bytes(data: bytes) -> 'Phar':
         obj = Phar()
         stream = BytesIO(data)
-        read_manifest(stream, obj)
-        read_contents(stream, obj)
-        verify_signature(stream, obj)
+        read_phar(stream, obj)
         return obj

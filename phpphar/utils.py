@@ -32,8 +32,11 @@ class DecompressReader:
         if size == -1:
             self._update()
         else:
-            while self._buffer.getbuffer().nbytes - self._buffer.tell() < size:
-                self._decompressor.decompress(self._stream.read(window))
+            cursor = self._buffer.tell()
+            while self._buffer.getbuffer().nbytes - cursor < size:
+                buf = self._decompressor.decompress(self._stream.read(window))
+                self._buffer.write(buf)
+            self._buffer.seek(cursor)
         return self._buffer.read(size)
 
 

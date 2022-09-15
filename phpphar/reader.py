@@ -6,14 +6,30 @@ import zlib
 from phpserialize import unserialize
 
 import phpphar.types as types
-from phpphar.constants import _HALT, _STUB_SFX
+from phpphar.constants import _HALT, _STUB_SFX, _PHAR_VERSION
 from phpphar.utils import BZip2Reader, ZlibReader, _readuntil
+
+
+def read_phar(stream: BytesIO, obj: 'types.Phar'):
+    obj.stub = _readuntil(stream, _HALT)
+    cursor = stream.tell()
+    lookahead = stream.read(5)
+    for s in _STUB_SFX:
+        # `sorted` guarantees that longer patterns are matched first
+        if lookahead.startswith(s):
+            obj.stub += s
+            cursor += len(s)
+            break
+    stream.seek(cursor)
+    read_manifest(stream, obj)
+    read_contents(stream, obj)
+    verify_signature(stream, obj)
 
 
 def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
     entry = types.PharEntry()
     name_len = int.from_bytes(stream.read(4), 'little')
-    entry.name = stream.read(name_len)
+    entry.name = stream.read(name_len).decode('utf-8')
     entry.size = int.from_bytes(stream.read(4), 'little')
     entry.timestamp = int.from_bytes(stream.read(4), 'little')
     entry.compressed_size = int.from_bytes(stream.read(4), 'little')
@@ -29,22 +45,14 @@ def read_entry_manifest(stream: BytesIO, obj: 'types.Phar'):
 
 
 def read_manifest(stream: BytesIO, obj: 'types.Phar'):
-    obj.stub = _readuntil(stream, _HALT)
     cursor = stream.tell()
-    lookahead = stream.read(5)
-    for s in _STUB_SFX:
-        # `sorted` guarantees that longer patterns are matched first
-        if lookahead.startswith(s):
-            cursor += len(s)
-            break
-    stream.seek(cursor)
     manifest_len = int.from_bytes(stream.read(4), 'little')
     manifest_end = cursor + manifest_len + 4
     entry_cnt = int.from_bytes(stream.read(4), 'little')
-    assert stream.read(2) == b'\x11\x00'
+    assert stream.read(2) == _PHAR_VERSION
     obj.flags = types.PharGlobalFlag(int.from_bytes(stream.read(4), 'little'))
     alias_len = int.from_bytes(stream.read(4), 'little')
-    obj.alias = stream.read(alias_len)
+    obj.alias = stream.read(alias_len).decode('utf-8')
     metadata_len = int.from_bytes(stream.read(4), 'little')
     if metadata_len != 0:
         metadata_raw = stream.read(metadata_len)
