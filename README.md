@@ -4,7 +4,7 @@ A port of PHP's Phar class, in pure python
 
 ## Installation
 
-`pip install libphpphar` (not available yet)
+`pip install libphpphar`
 
 ## Features
 
