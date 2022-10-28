@@ -38,3 +38,4 @@ assert original == output
 ## Important
 
 - the code is written and tested under python 3.9+
+- note that for php to decompress the archive properly, you need at least one entry
